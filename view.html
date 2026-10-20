@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gradpath — Read-only views</title>
+<style>
+:root{color-scheme:light;--navy:#172554;--teal:#0f766e;--ivory:#faf7f0;--line:#e2ded5;--slate:#64748b}
+*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:#243047;font:15px/1.55 system-ui,-apple-system,sans-serif}main{max-width:1100px;margin:auto;padding:28px 18px 60px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}h1,h2,h3{color:var(--navy);line-height:1.2}h1{margin:0;font-size:30px}.muted{color:var(--slate);font-size:13px}.tabs{display:flex;gap:10px;margin:24px 0}.tab{cursor:pointer;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:11px 16px;font-weight:700;color:var(--navy);min-width:140px}.tab.active{background:var(--navy);border-color:var(--navy);color:#fff}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:17px;box-shadow:0 5px 20px #1725540b}.tag{display:inline-block;background:#ccfbf1;color:#115e59;border-radius:99px;padding:4px 9px;font-size:12px}.hidden{display:none!important}.notice{border:1px solid var(--line);background:#fff;border-radius:12px;padding:13px;margin:16px 0}.error{color:#a43c27}a{color:var(--teal)}.meta{font-size:13px;color:var(--slate)}
+</style></head>
+<body><main>
+<header><div><p class="muted">FALL 2027 · APPLICATION TRACKER</p><h1>Gradpath</h1><p class="muted">Read-only public views</p></div><a href="./index.html">Open tracker</a></header>
+<div class="notice">Only information explicitly published by a profile appears here. This page is read-only. Published details are visible to anyone who can access this website.</div>
+<div class="tabs"><button class="tab active" data-person="Mihir">Mihir</button><button class="tab" data-person="Meghana">Meghana</button></div>
+<div id="message" class="notice">Loading published profile…</div>
+<div id="content" class="hidden"><section><h2 id="profileTitle"></h2><p id="updated" class="muted"></p><div id="universities" class="grid"></div></section><section><h2>Tasks</h2><div id="tasks" class="grid"></div></section></div>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// Set these two values to the same Supabase project used by index.html.
+const SUPABASE_URL = 'https://hippuholnpzqzjygoxrc.supabase.co';
+const SUPABASE_PUBLIC_KEY = 'sb_publishable_icltIe1dP67J1ayNakj_0Q_7DTXnyhF';
+const $=id=>document.getElementById(id);let selected=new URLSearchParams(location.search).get('person')==='Meghana'?'Meghana':'Mihir';
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function msg(s,error=false){$('message').textContent=s;$('message').classList.toggle('error',error);$('message').classList.remove('hidden');$('content').classList.add('hidden')}
+async function load(){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.person===selected));msg('Loading '+selected+'…');if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_PUBLIC_KEY.startsWith('PASTE_')){msg('Setup needed: edit view.html and fill in the Supabase URL and public publishable/anon key near the top of the script.',true);return}
+try{const db=createClient(SUPABASE_URL,SUPABASE_PUBLIC_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});const{data,error}=await db.from('gradpath_public_views').select('display_name,snapshot,updated_at').eq('display_name',selected).maybeSingle();if(error)throw error;if(!data){msg(selected+' has not published a view yet. Sign in to Gradpath and choose “Publish my view”.');return}
+const s=data.snapshot||{},u=s.universities||[],t=s.tasks||[];$('profileTitle').textContent=selected+"'s shortlist";$('updated').textContent='Last published '+new Date(data.updated_at).toLocaleString();$('universities').innerHTML=u.length?u.map(x=>'<article class="card"><h3>'+esc(x.name)+'</h3><p>'+esc(x.program)+' · '+esc(x.country)+'</p><p><span class="tag">'+esc(x.status||'Not started')+'</span></p><p class="meta">Deadline: '+esc(x.deadline||'Not entered')+' · Priority: '+esc(x.priority||'—')+'</p>'+(x.duration?'<p class="meta">Duration: '+esc(x.duration)+'</p>':'')+(x.link?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(x.link)+'">Official course page</a></p>':'')+(x.notes?'<p>'+esc(x.notes)+'</p>':'')+'</article>').join(''):'<p>No universities published.</p>';$('tasks').innerHTML=t.length?t.map(x=>'<article class="card"><h3>'+esc(x.title)+'</h3><p>'+esc(x.university||'General task')+'</p><p class="meta">'+esc(x.category)+' · '+esc(x.status)+(x.date?' · '+esc(x.date):'')+'</p>'+(x.notes?'<p>'+esc(x.notes)+'</p>':'')+'</article>').join(''):'<p>No tasks published.</p>';$('message').classList.add('hidden');$('content').classList.remove('hidden')
+}catch(e){msg('Could not load published view: '+e.message,true)}}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.person;history.replaceState(null,'','?person='+selected);load()}));load();
+</script></main></body></html>

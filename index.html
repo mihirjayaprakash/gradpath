@@ -34,7 +34,7 @@
 <div id="appScreen" class="app hidden">
   <header class="top">
     <div class="brand"><div class="logo">G</div><div><div class="eyebrow">Fall 2027 · USA + Ireland</div><h1>Gradpath</h1><p>Plan clearly. Apply confidently.</p></div></div>
-    <div class="top-actions"><span class="pill" id="syncState">Cloud sync: connecting…</span><button class="btn outline small" id="exportBtn">Export backup</button><button class="btn outline small" id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button class="btn outline small" id="settingsBtn">Settings</button><button class="btn outline small" id="signOutBtn">Sign out</button></div>
+    <div class="top-actions"><span class="pill" id="syncState">Cloud sync: connecting…</span><a class="btn outline small" href="./view.html">Read-only view</a><button class="btn outline small" id="publishViewBtn">Publish my view</button><button class="btn outline small" id="exportBtn">Export backup</button><button class="btn outline small" id="importBtn">Restore backup</button><input id="importFile" type="file" accept="application/json" class="hidden"><button class="btn outline small" id="settingsBtn">Settings</button><button class="btn outline small" id="signOutBtn">Sign out</button></div>
   </header>
   <div class="layout">
     <aside class="sidebar">
@@ -181,6 +181,18 @@ async function startApp(){
  }
  renderAll();
 }
+$('publishViewBtn').onclick=async()=>{
+ if(!supabase||!user){showToast('Sign in before publishing your view.',true);return}
+ const displayName=prompt('Publish this account as which name? Enter exactly Mihir or Meghana.','Mihir');
+ if(!displayName)return;
+ const name=displayName.trim();
+ if(!['Mihir','Meghana'].includes(name)){showToast('Choose exactly Mihir or Meghana.',true);return}
+ if(!confirm('This publishes your university shortlist, statuses, deadlines, course links, tasks and notes to a public read-only page. Anyone can view published details. Continue?'))return;
+ const snapshot={universities:universities.map(u=>({name:u.name,country:u.country,school:u.school,program:u.program,location:u.location,duration:u.duration,priority:u.priority,gre:u.gre,lors:u.lors,status:u.status,deadline:u.deadline,fee:u.fee,cost:u.cost,funding:u.funding,link:u.link,notes:u.notes})),tasks:tasks.map(t=>({category:t.category,title:t.title,university:t.university,status:t.status,owner:t.owner,date:t.date,link:t.link,notes:t.notes}))};
+ const {error}=await supabase.from('gradpath_public_views').upsert({owner_id:user.id,display_name:name,snapshot,updated_at:new Date().toISOString()},{onConflict:'owner_id'});
+ if(error){showToast('Could not publish view: '+error.message,true);return}
+ showToast(name+' view published. Open Read-only view to check it.');
+};
 $('signOutBtn').onclick=async()=>{if(supabase)await supabase.auth.signOut();user=null;$('appScreen').classList.add('hidden');$('authScreen').classList.remove('hidden')};
 function tagStatus(s){let cls='';if(s==='Submitted'||s==='Complete')cls='submitted';else if(s==='Offer received')cls='offer';else if(s==='In progress'||s==='Ready to submit')cls='progress';else if(s==='Waiting'||s==='Waiting on materials'||s==='Waiting for approval')cls='wait';else if(s==='Rejected')cls='rejected';return `<span class="tag ${cls}">${esc(s||'Not started')}</span>`}
 function tagPriority(s){return `<span class="tag ${s==='High'?'high':s==='Medium'?'medium':'low'}">${esc(s||'Medium')}</span>`}
